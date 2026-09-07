@@ -1,23 +1,213 @@
-# PaiDuayDi
+# PaiDuayDi — ไปด้วยดิ
 
-Android application for finding compatible travel companions and nearby trips.
+> แพลตฟอร์ม Android สำหรับค้นหาและจับคู่ผู้ร่วมเดินทางที่มีต้นทาง ปลายทาง และช่วงเวลาใกล้เคียงกัน เพื่อช่วยให้เดินทางสะดวก ปลอดภัย และแบ่งค่าใช้จ่ายได้ง่ายขึ้น
 
-## Google Maps setup (Android)
+![PaiDuayDi Home](assets/screens/06___Home__Updated_Style_.png)
 
-The Home screen shows Google Maps behind the trip sheet and requests the
-device's location while the app is open.
+## ภาพรวม
 
-1. Create a Google Maps Platform API key and enable **Maps SDK for Android**
-   and **Places API (New)**.
-2. Create or update `android/local.properties` (this file is ignored by Git):
+PaiDuayDi เป็น Flutter application ที่นำ Google Maps มาใช้กับการค้นหาสถานที่ การเลือกจุดขึ้น/จุดหมาย และการคำนวณเส้นทางจริง เมื่อผู้ใช้เลือกปลายทางแล้ว ระบบจะแสดงหน้า **Create Trip** เพื่อกำหนดรายละเอียดก่อนสร้างทริปสำหรับค้นหาผู้ร่วมทาง
 
-   ```properties
-   GOOGLE_MAPS_API_KEY=your_android_restricted_key
-   ```
+โปรเจกต์นี้เป็น Core MVP ของแพลตฟอร์ม โดยเน้น flow หลักตั้งแต่เข้าสู่ระบบจนถึงการเตรียมสร้างทริป
 
-3. Restrict the key to the Android application ID `com.paiduaydi.paiduaydi`
-   and its signing certificate SHA-1 before distributing the app.
-4. Run `flutter pub get`, then `flutter run` on an Android device/emulator.
+## ฟีเจอร์ที่มีแล้ว
 
-No key is stored in this repository. Without it, the app UI will run but Google
-Maps cannot load map tiles.
+- Splash และหน้าทางเข้าสู่ระบบ
+- เข้าสู่ระบบด้วยเบอร์โทรศัพท์และ OTP ผ่าน Firebase Authentication
+- โครงสร้างการเข้าสู่ระบบด้วย Google และ Facebook
+- หน้า Home พร้อม UX/UI สำหรับการค้นหาทริป
+- แสดง Google Maps พร้อมตำแหน่งปัจจุบันของอุปกรณ์
+- ค้นหาต้นทาง/ปลายทางด้วย Google Places API (New)
+- เลือกจุดหมายด้วยการแตะปักหมุดบนแผนที่
+- คำนวณเส้นทางรถยนต์จริงผ่าน Google Routes API
+- แสดงเส้นทางสีเขียว ระยะทาง และเวลาเดินทางบนแผนที่
+- แผง Home แบบเลื่อนได้ 3 ระดับ พร้อมปุ่ม `เลือกบน Maps`
+- หน้า **Create Trip (06.5)** สำหรับกำหนดวัน เวลา ความยืดหยุ่น จำนวนคน งบประมาณ รูปแบบเดินทาง และความต้องการร่วมทริป
+- Widget tests สำหรับ Splash/Auth และหน้า Create Trip
+
+## Flow ที่ใช้งานได้ในปัจจุบัน
+
+```text
+Sign in
+  → Home + Google Maps
+  → เลือกต้นทางและปลายทาง / ปักหมุดบนแผนที่
+  → คำนวณเส้นทางด้วย Firebase Function + Google Routes API
+  → Create Trip
+  → กำหนดรายละเอียดทริป และกด Start
+```
+
+> ปุ่ม `Start` ใน MVP ปัจจุบันแสดงผลยืนยันในแอปแล้ว แต่ยังไม่ได้บันทึก Trip ลง Firestore หรือจับคู่ผู้ใช้จริง ส่วน Matching, Chat และ Profile แบบเต็มเป็นงานระยะถัดไป
+
+## Tech stack
+
+| ส่วน | เทคโนโลยี |
+| --- | --- |
+| Mobile app | Flutter / Dart |
+| Authentication | Firebase Authentication |
+| Backend route proxy | Firebase Cloud Functions (2nd Gen, TypeScript) |
+| Map | Google Maps SDK for Android |
+| Place search | Google Places API (New) |
+| Route calculation | Google Routes API |
+| Location | Geolocator |
+| Design | Google Fonts, Material 3 |
+
+## สถาปัตยกรรม
+
+```text
+Flutter app
+ ├─ Firebase Authentication
+ ├─ Google Maps SDK + Geolocator
+ ├─ Google Places API (ค้นหาสถานที่)
+ └─ Firebase Callable Function: computeTripRoute
+       └─ Google Routes API
+            └─ ระยะทาง + เวลา + encoded polyline
+```
+
+Routes API key ไม่ถูกเก็บในแอปหรือใน Git repository โดย Cloud Function จะอ่านจาก Firebase Secret เท่านั้น
+
+## โครงสร้างโฟลเดอร์
+
+```text
+lib/
+├─ core/
+│  ├─ services/          # Route service และ service ส่วนกลาง
+│  └─ theme/             # สีและ typography ของแอป
+├─ features/auth/
+│  ├─ data/models/       # User model
+│  └─ presentation/screens/
+│     ├─ splash_screen.dart
+│     ├─ auth_entry_screen.dart
+│     ├─ phone_entry_screen.dart
+│     ├─ otp_verification_screen.dart
+│     ├─ home_screen.dart
+│     └─ home_inside_feature_screen.dart
+└─ main.dart
+
+functions/
+└─ src/index.ts          # computeTripRoute Cloud Function
+```
+
+## เริ่มต้นใช้งาน
+
+### สิ่งที่ต้องมี
+
+- Flutter SDK ที่รองรับ Dart `^3.13.1`
+- Android Studio และ Android SDK
+- Android emulator หรืออุปกรณ์ Android จริง
+- Node.js 20 (สำหรับ Firebase Functions ตาม config ปัจจุบัน)
+- Firebase CLI
+- Google Cloud project ที่เปิดใช้ Maps, Places และ Routes API
+
+### 1. Clone และติดตั้ง dependency
+
+```bash
+git clone https://github.com/Nawinnapat/PaiDuayDi.git
+cd PaiDuayDi
+flutter pub get
+```
+
+สำหรับ Firebase Functions:
+
+```bash
+cd functions
+npm install
+cd ..
+```
+
+### 2. ตั้งค่า Firebase
+
+โปรเจกต์มี `firebase_options.dart` และ `.firebaserc` สำหรับ Firebase project ที่ใช้พัฒนาอยู่แล้ว หากต้องการเชื่อม Firebase project ใหม่ ให้รัน:
+
+```bash
+flutterfire configure
+firebase login
+```
+
+จากนั้นเปิดใช้ผู้ให้บริการ Sign-in ที่ต้องการใน Firebase Authentication เช่น Phone, Google และ Facebook
+
+### 3. ตั้งค่า Google Maps และ Places สำหรับ Android
+
+ใน Google Cloud project เดียวกัน ให้เปิด API เหล่านี้:
+
+- **Maps SDK for Android**
+- **Places API (New)**
+
+สร้างหรือแก้ไฟล์ `android/local.properties` ซึ่งถูก ignore โดย Git:
+
+```properties
+sdk.dir=C:\\Users\\YOUR_NAME\\AppData\\Local\\Android\\sdk
+GOOGLE_MAPS_API_KEY=your_android_maps_key
+```
+
+ตั้งข้อจำกัดของ key ให้เป็น Android app โดยใช้:
+
+- Package name: `com.paiduaydi.paiduaydi`
+- SHA-1 ของ signing certificate ที่ใช้ build แอป
+
+> ห้ามใส่ API key ลงใน `README.md`, Git หรือ source code ที่ commit ขึ้น repository
+
+### 4. ตั้งค่า Google Routes API สำหรับ Cloud Functions
+
+เปิด **Routes API** ใน Google Cloud project จากนั้นเก็บ key ไว้ใน Firebase Secret:
+
+```bash
+firebase functions:secrets:set GOOGLE_ROUTES_API_KEY
+firebase deploy --only functions
+```
+
+Cloud Function `computeTripRoute` ทำงานที่ region `asia-southeast1` และคืนค่า polyline, ระยะทาง และเวลาให้ Flutter app
+
+### 5. รันแอป
+
+```bash
+flutter run
+```
+
+ระบุอุปกรณ์เมื่อมีหลายตัว:
+
+```bash
+flutter devices
+flutter run -d emulator-5554
+```
+
+## ตรวจสอบคุณภาพและ build APK
+
+```bash
+flutter analyze
+flutter test
+flutter build apk --release
+```
+
+ไฟล์ APK ที่สร้างจะอยู่ที่:
+
+```text
+build/app/outputs/flutter-apk/app-release.apk
+```
+
+### หมายเหตุสำหรับการเผยแพร่จริง
+
+Release build ในสถานะปัจจุบันใช้ debug signing เพื่อความสะดวกในการทดสอบเท่านั้น ก่อนนำขึ้น Google Play หรือแจกจ่ายจริง ควรสร้าง release keystore ของโปรเจกต์เองและตั้งค่า signing config ให้เหมาะสม
+
+## การแก้ปัญหาเบื้องต้น
+
+| อาการ | สิ่งที่ควรตรวจสอบ |
+| --- | --- |
+| แผนที่ว่างหรือไม่โหลด | `GOOGLE_MAPS_API_KEY`, การเปิด Maps SDK for Android และ package/SHA-1 restriction |
+| ค้นหาสถานที่ไม่เจอ | เปิด Places API (New), ตรวจสอบ billing และ Android Maps key |
+| คำนวณเส้นทางไม่สำเร็จ | เปิด Routes API, ตรวจสอบ Firebase Secret `GOOGLE_ROUTES_API_KEY` และ deploy Functions ล่าสุด |
+| ตำแหน่งปัจจุบันไม่แสดง | เปิด Location ของ emulator/อุปกรณ์ และอนุญาต Location permission ให้แอป |
+| Firebase Function ไม่อัปเดต | รัน `firebase deploy --only functions` อีกครั้ง แล้วดู log ใน Firebase Console |
+
+## Roadmap
+
+- [ ] บันทึก Trip และ Profile ลง Cloud Firestore
+- [ ] ระบบ Matching จากเส้นทาง เวลา งบประมาณ และจำนวนที่นั่ง
+- [ ] Join Trip และสถานะคำขอร่วมทาง
+- [ ] Chat แบบ real-time
+- [ ] การยืนยันตัวตนและระดับความน่าเชื่อถือ
+- [ ] Rating / Review หลังจบทริป
+- [ ] Release signing และ deployment production
+
+---
+
+พัฒนาเป็นส่วนหนึ่งของ PaiDuayDi Core MVP
