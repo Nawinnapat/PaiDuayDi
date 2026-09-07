@@ -10,6 +10,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/services/route_service.dart';
 import '../../data/models/user_model.dart';
+import 'home_inside_feature_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, required this.user});
@@ -32,6 +33,7 @@ class _HomeScreenState extends State<HomeScreen> {
   double _sheetSize = .94;
   bool _choosingDestination = false;
   bool _isLoadingRoute = false;
+  bool _isOpeningCreateTrip = false;
   String _originText = 'จาก: มธ. รังสิต';
   String _destinationText = 'จะไปไหนดี?';
 
@@ -114,6 +116,7 @@ class _HomeScreenState extends State<HomeScreen> {
       CameraUpdate.newLatLngZoom(selection.location, 15.5),
     );
     await _loadRoute();
+    if (!isOrigin) await _openCreateTrip();
   }
 
   Future<void> _selectDestination(LatLng location) async {
@@ -129,6 +132,25 @@ class _HomeScreenState extends State<HomeScreen> {
       curve: Curves.easeOutCubic,
     );
     await _loadRoute();
+    await _openCreateTrip();
+  }
+
+  Future<void> _openCreateTrip() async {
+    if (_isOpeningCreateTrip || _destination == null || !mounted) return;
+    _isOpeningCreateTrip = true;
+    try {
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => HomeInsideFeatureScreen(
+            originName: _originText.replaceFirst('จาก: ', ''),
+            destinationName: _destinationText,
+            route: _route,
+          ),
+        ),
+      );
+    } finally {
+      _isOpeningCreateTrip = false;
+    }
   }
 
   Future<void> _loadRoute() async {
