@@ -2,7 +2,9 @@
 
 > แพลตฟอร์ม Android สำหรับค้นหาและจับคู่ผู้ร่วมเดินทางที่มีต้นทาง ปลายทาง และช่วงเวลาใกล้เคียงกัน เพื่อช่วยให้เดินทางสะดวก ปลอดภัย และแบ่งค่าใช้จ่ายได้ง่ายขึ้น
 
-![PaiDuayDi Home](assets/screens/06___Home__Updated_Style_.png)
+<p align="center">
+  <img src="assets/screens/06___Home__Updated_Style_.png" width="320" alt="PaiDuayDi Home screen">
+</p>
 
 ## ภาพรวม
 
