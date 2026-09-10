@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/services/route_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
+import 'matching_screen.dart';
 
 class HomeInsideFeatureScreen extends StatefulWidget {
   const HomeInsideFeatureScreen({
@@ -92,12 +93,13 @@ class _HomeInsideFeatureScreenState extends State<HomeInsideFeatureScreen> {
   }
 
   void _startTrip() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'สร้างทริปไป ${widget.destinationName} แล้ว กำลังค้นหาเพื่อนร่วมทาง',
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => MatchingScreen(
+          originName: widget.originName,
+          destinationName: widget.destinationName,
+          estimatedCost: _estimatedCost,
         ),
-        behavior: SnackBarBehavior.floating,
       ),
     );
   }
