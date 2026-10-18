@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../../../core/services/route_service.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -12,11 +13,15 @@ class HomeInsideFeatureScreen extends StatefulWidget {
     super.key,
     required this.originName,
     required this.destinationName,
+    this.originLocation,
+    this.destinationLocation,
     this.route,
   });
 
   final String originName;
   final String destinationName;
+  final LatLng? originLocation;
+  final LatLng? destinationLocation;
   final RouteDetails? route;
 
   @override
@@ -98,7 +103,17 @@ class _HomeInsideFeatureScreenState extends State<HomeInsideFeatureScreen> {
         builder: (_) => MatchingScreen(
           originName: widget.originName,
           destinationName: widget.destinationName,
+          originLocation: widget.originLocation,
+          destinationLocation: widget.destinationLocation,
+          route: widget.route,
           estimatedCost: _estimatedCost,
+          departureDateTime: DateTime(
+            _date.year,
+            _date.month,
+            _date.day,
+            _time.hour,
+            _time.minute,
+          ),
         ),
       ),
     );

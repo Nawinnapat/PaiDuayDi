@@ -2,22 +2,33 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
+import '../../../../core/services/route_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
+import 'trip_matched_screen.dart';
 
 class MatchingScreen extends StatefulWidget {
   const MatchingScreen({
     super.key,
     required this.originName,
     required this.destinationName,
+    this.originLocation,
+    this.destinationLocation,
+    this.route,
     required this.estimatedCost,
+    required this.departureDateTime,
     this.searchDelay = const Duration(milliseconds: 2200),
   });
 
   final String originName;
   final String destinationName;
+  final LatLng? originLocation;
+  final LatLng? destinationLocation;
+  final RouteDetails? route;
   final int estimatedCost;
+  final DateTime departureDateTime;
   final Duration searchDelay;
 
   @override
@@ -49,12 +60,20 @@ class _MatchingScreenState extends State<MatchingScreen> {
     return firstPart.length > 18 ? '${firstPart.substring(0, 17)}…' : firstPart;
   }
 
-  void _requestToJoin(String name) {
-    setState(() => _requestedMatches.add(name));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('ส่งคำขอร่วมทางให้ $name แล้ว'),
-        behavior: SnackBarBehavior.floating,
+  Future<void> _requestToJoin(String name) async {
+    if (!_requestedMatches.add(name)) return;
+    setState(() {});
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => TripMatchedScreen(
+          originName: widget.originName,
+          destinationName: widget.destinationName,
+          originLocation: widget.originLocation,
+          destinationLocation: widget.destinationLocation,
+          route: widget.route,
+          estimatedCost: widget.estimatedCost,
+          departureDateTime: widget.departureDateTime,
+        ),
       ),
     );
   }

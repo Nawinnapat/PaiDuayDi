@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:paiduaydi/core/services/route_service.dart';
 import 'package:paiduaydi/features/auth/presentation/screens/home_inside_feature_screen.dart';
 import 'package:paiduaydi/features/auth/presentation/screens/matching_screen.dart';
 import 'package:paiduaydi/main.dart';
@@ -61,11 +63,19 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     await tester.pumpWidget(
-      const MaterialApp(
+      MaterialApp(
         home: MatchingScreen(
           originName: 'รังสิต',
           destinationName: 'อนุสาวรีย์ชัยฯ',
+          originLocation: const LatLng(13.75, 100.5),
+          destinationLocation: const LatLng(13.76, 100.51),
+          route: const RouteDetails(
+            encodedPolyline: '',
+            distanceMeters: 1500,
+            durationSeconds: 600,
+          ),
           estimatedCost: 50,
+          departureDateTime: DateTime(2026, 10, 18, 17, 30),
           searchDelay: Duration(milliseconds: 10),
         ),
       ),
@@ -81,8 +91,30 @@ void main() {
     expect(find.text('ขอร่วมทาง'), findsNWidgets(2));
 
     await tester.tap(find.text('ขอร่วมทาง').first);
-    await tester.pump();
-    expect(find.text('ส่งคำขอแล้ว'), findsOneWidget);
+    await tester.pumpAndSettle();
+    expect(find.text('จับคู่สำเร็จแล้ว!'), findsOneWidget);
+    expect(find.text('รังสิต'), findsWidgets);
+    expect(find.text('อนุสาวรีย์ชัยฯ'), findsWidgets);
+    expect(find.text('50 BAHT / คน'), findsOneWidget);
+    expect(find.text('ยืนยันเข้าร่วมทริป'), findsOneWidget);
+    final map = tester.widget<GoogleMap>(find.byType(GoogleMap));
+    expect(
+      map.markers.map((marker) => marker.position),
+      contains(const LatLng(13.75, 100.5)),
+    );
+    expect(
+      map.markers.map((marker) => marker.position),
+      contains(const LatLng(13.76, 100.51)),
+    );
+    expect(map.scrollGesturesEnabled, isTrue);
+    expect(map.zoomGesturesEnabled, isTrue);
+
+    await tester.tap(find.byTooltip('ขยายแผนที่'));
+    await tester.pumpAndSettle();
+    expect(find.text('แผนที่เส้นทาง'), findsOneWidget);
+    final fullScreenMap = tester.widget<GoogleMap>(find.byType(GoogleMap));
+    expect(fullScreenMap.scrollGesturesEnabled, isTrue);
+    expect(fullScreenMap.zoomGesturesEnabled, isTrue);
 
     await tester.pumpWidget(const SizedBox());
   });

@@ -27,6 +27,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final _routeService = RouteService();
   GoogleMapController? _mapController;
   LatLng _current = _fallback;
+  bool _hasCurrentLocation = false;
   LatLng? _origin;
   LatLng? _destination;
   RouteDetails? _route;
@@ -71,7 +72,10 @@ class _HomeScreenState extends State<HomeScreen> {
       }
       final position = await Geolocator.getCurrentPosition();
       if (!mounted) return;
-      setState(() => _current = LatLng(position.latitude, position.longitude));
+      setState(() {
+        _current = LatLng(position.latitude, position.longitude);
+        _hasCurrentLocation = true;
+      });
       await _mapController?.animateCamera(
         CameraUpdate.newLatLngZoom(_current, 14.5),
       );
@@ -95,7 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
         fullscreenDialog: true,
         builder: (_) => _RoutePlacePickerScreen(
           isOrigin: isOrigin,
-          currentLocation: _current,
+          currentLocation: _hasCurrentLocation ? _current : null,
           originText: _originText,
           destinationText: _destinationText,
         ),
@@ -115,7 +119,7 @@ class _HomeScreenState extends State<HomeScreen> {
     await _mapController?.animateCamera(
       CameraUpdate.newLatLngZoom(selection.location, 15.5),
     );
-    await _loadRoute();
+    if (_origin != null && _destination != null) await _loadRoute();
     if (!isOrigin) await _openCreateTrip();
   }
 
@@ -131,19 +135,61 @@ class _HomeScreenState extends State<HomeScreen> {
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeOutCubic,
     );
-    await _loadRoute();
+    if (_origin != null) await _loadRoute();
     await _openCreateTrip();
+  }
+
+  Future<void> _resolveDefaultOrigin() async {
+    if (_origin != null) return;
+    setState(() => _isLoadingRoute = true);
+    try {
+      final predictions = await searchPlace(
+        query: 'Thammasat University Rangsit Campus',
+        countryCode: 'TH',
+        limit: 5,
+      );
+      final matchingPlaces = predictions.where((place) {
+        final label = '${place.primaryText} ${place.secondaryText}'
+            .toLowerCase();
+        return (label.contains('thammasat') || label.contains('ธรรมศาสตร์')) &&
+            (label.contains('rangsit') || label.contains('รังสิต'));
+      });
+      if (matchingPlaces.isEmpty) return;
+      final details = await getPlaceDetails(
+        placeId: matchingPlaces.first.placeId,
+      );
+      final latitude = details.latitude;
+      final longitude = details.longitude;
+      if (latitude == null || longitude == null || !mounted) return;
+      setState(() => _origin = LatLng(latitude, longitude));
+    } catch (_) {
+      // The place picker provides a way to supply a real origin below.
+    } finally {
+      if (mounted) setState(() => _isLoadingRoute = false);
+    }
   }
 
   Future<void> _openCreateTrip() async {
     if (_isOpeningCreateTrip || _destination == null || !mounted) return;
     _isOpeningCreateTrip = true;
     try {
+      if (_origin == null) await _resolveDefaultOrigin();
+      if (_origin == null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('เลือกจุดขึ้นรถเพื่อแสดงเส้นทางจริง')),
+        );
+        await _openPlaceSearch(isOrigin: true);
+      }
+      if (_origin == null || !mounted) return;
+      if (_route == null) await _loadRoute();
+      if (!mounted) return;
       await Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => HomeInsideFeatureScreen(
             originName: _originText.replaceFirst('จาก: ', ''),
             destinationName: _destinationText,
+            originLocation: _origin,
+            destinationLocation: _destination,
             route: _route,
           ),
         ),
@@ -541,7 +587,7 @@ class _RoutePlacePickerScreen extends StatefulWidget {
   });
 
   final bool isOrigin;
-  final LatLng currentLocation;
+  final LatLng? currentLocation;
   final String originText;
   final String destinationText;
 
@@ -635,12 +681,11 @@ class _RoutePlacePickerScreenState extends State<_RoutePlacePickerScreen> {
   }
 
   void _selectCurrentLocation() {
+    final currentLocation = widget.currentLocation;
+    if (currentLocation == null) return;
     Navigator.pop(
       context,
-      _PlaceSelection(
-        name: 'ตำแหน่งปัจจุบัน',
-        location: widget.currentLocation,
-      ),
+      _PlaceSelection(name: 'ตำแหน่งปัจจุบัน', location: currentLocation),
     );
   }
 
@@ -726,12 +771,13 @@ class _RoutePlacePickerScreenState extends State<_RoutePlacePickerScreen> {
       return ListView(
         padding: const EdgeInsets.symmetric(horizontal: 22),
         children: [
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.navigation_outlined, size: 30),
-            title: Text('ตำแหน่งปัจจุบัน', style: AppTypography.titleSmall),
-            onTap: _selectCurrentLocation,
-          ),
+          if (widget.currentLocation != null)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.navigation_outlined, size: 30),
+              title: Text('ตำแหน่งปัจจุบัน', style: AppTypography.titleSmall),
+              onTap: _selectCurrentLocation,
+            ),
         ],
       );
     }
